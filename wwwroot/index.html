@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arquivos PDF</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            max-width: 640px;
+            margin: 3rem auto;
+            padding: 0 1rem;
+            color: #222;
+        }
+        h1 {
+            font-size: 1.5rem;
+        }
+        .upload-box {
+            border: 2px dashed #bbb;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        button {
+            background-color: #2f1a63;
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .file-name {
+            font-weight: 600;
+        }
+        .file-meta {
+            font-size: 0.8rem;
+            color: #777;
+        }
+        .actions a, .actions button {
+            margin-left: 0.5rem;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+        .download-btn {
+            display: inline-block;
+        }
+        .delete-btn {
+            background-color: #a02020;
+        }
+        #status {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Meus arquivos PDF</h1>
+
+    <div class="upload-box">
+        <input type="file" id="fileInput" accept="application/pdf" />
+        <br /><br />
+        <button id="uploadBtn">Enviar PDF</button>
+        <div id="status"></div>
+    </div>
+
+    <ul id="fileList"></ul>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const status = document.getElementById('status');
+        const fileList = document.getElementById('fileList');
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function loadFiles() {
+            const res = await fetch('/files');
+            const files = await res.json();
+            fileList.innerHTML = '';
+
+            if (files.length === 0) {
+                fileList.innerHTML = '<li>Nenhum arquivo enviado ainda.</li>';
+                return;
+            }
+
+            for (const f of files) {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div>
+                        <div class="file-name">${f.fileName}</div>
+                        <div class="file-meta">${formatSize(f.sizeInBytes)} - ${new Date(f.uploadedAt).toLocaleString('pt-BR')}</div>
+                    </div>
+                    <div class="actions">
+                        <a class="download-btn" href="${f.downloadUrl}"><button>Baixar</button></a>
+                        <button class="delete-btn" data-url="${f.url}">Excluir</button>
+                    </div>
+                `;
+                fileList.appendChild(li);
+            }
+
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    await fetch(`/files?url=${encodeURIComponent(btn.dataset.url)}`, { method: 'DELETE' });
+                    loadFiles();
+                });
+            });
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                status.textContent = 'Selecione um arquivo PDF primeiro.';
+                return;
+            }
+
+            uploadBtn.disabled = true;
+            status.textContent = 'Enviando...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/files/upload', { method: 'POST', body: formData });
+                if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || 'Falha no upload');
+                }
+                status.textContent = 'Upload concluído!';
+                fileInput.value = '';
+                loadFiles();
+            } catch (err) {
+                status.textContent = 'Erro: ' + err.message;
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        });
+
+        loadFiles();
+    </script>
+</body>
+</html>
