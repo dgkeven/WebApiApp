@@ -1,0 +1,11 @@
+.vercel
+.env*
+
+# .NET
+bin/
+obj/
+*.user
+
+# IDE
+.vs/
+.vscode/
