@@ -115,7 +115,7 @@
                         <div class="file-meta">${formatSize(f.sizeInBytes)} - ${new Date(f.uploadedAt).toLocaleString('pt-BR')}</div>
                     </div>
                     <div class="actions">
-                        <a class="download-btn" href="${f.downloadUrl}"><button>Baixar</button></a>
+                        <a class="download-btn" href="/files/download?url=${encodeURIComponent(f.url)}&fileName=${encodeURIComponent(f.fileName)}"><button>Baixar</button></a>
                         <button class="delete-btn" data-url="${f.url}">Excluir</button>
                     </div>
                 `;

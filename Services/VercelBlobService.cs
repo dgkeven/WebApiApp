@@ -52,6 +52,7 @@ public class VercelBlobService
         };
         request.Headers.Add("x-content-type", "application/pdf");
         request.Headers.Add("x-add-random-suffix", "0");
+        request.Headers.Add("x-access", "private");
 
         var response = await _http.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
@@ -112,6 +113,32 @@ public class VercelBlobService
 
         var response = await _http.SendAsync(request);
         return response.IsSuccessStatusCode;
+    }
+
+    /// <summary>
+    /// Busca o conteúdo de um blob privado autenticado com o token, para ser
+    /// repassado (streamed) pelo nosso próprio servidor. Blobs privados não
+    /// têm URL pública acessível diretamente pelo navegador.
+    /// </summary>
+    public async Task<Stream?> DownloadAsync(string blobUrl)
+    {
+        var uri = new Uri(blobUrl, UriKind.Absolute);
+
+        // Proteção contra SSRF: só permitimos buscar URLs que realmente
+        // apontam para a infraestrutura da Vercel Blob, já que essa
+        // requisição carrega nosso token de autenticação.
+        if (!uri.Host.EndsWith(".vercel-storage.com", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("URL de blob inválida.");
+        }
+
+        var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadAsStreamAsync();
     }
 
     private static string ExtractOriginalFileName(string pathname)

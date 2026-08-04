@@ -74,6 +74,18 @@ app.MapPost("/files/upload", async (IFormFile file, VercelBlobService blob) =>
 app.MapGet("/files", async (VercelBlobService blob) => await blob.ListAsync())
 .WithName("ListFiles");
 
+app.MapGet("/files/download", async (string url, string fileName, VercelBlobService blob) =>
+{
+    var stream = await blob.DownloadAsync(url);
+    if (stream is null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.File(stream, "application/pdf", fileName);
+})
+.WithName("DownloadFile");
+
 app.MapDelete("/files", async (string url, VercelBlobService blob) =>
     await blob.DeleteAsync(url) ? Results.NoContent() : Results.NotFound())
 .WithName("DeleteFile");
