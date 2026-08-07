@@ -52,7 +52,6 @@ public class VercelBlobService
         };
         request.Headers.Add("x-content-type", "application/pdf");
         request.Headers.Add("x-add-random-suffix", "0");
-        request.Headers.Add("x-access", "private");
 
         var response = await _http.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
